@@ -1,3 +1,4 @@
+// index.js
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -6,13 +7,19 @@ const { MongoClient, ObjectId, ServerApiVersion } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+// Enable CORS for your frontend
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Allow requests from your frontend
+    credentials: true, // Allow cookies and credentials
+  })
+);
+
 app.use(express.json());
 
-// Replace with your actual MongoDB URI
+// MongoDB Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2lkiq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient instance
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -21,17 +28,15 @@ const client = new MongoClient(uri, {
   },
 });
 
-// Connect to MongoDB once and keep the connection open
 async function run() {
   try {
     await client.connect();
     console.log("Connected to MongoDB!");
 
-    // Access the database and collections
     const database = client.db("visaNavigatorDB");
     const visasCollection = database.collection("visas");
 
-    // Create a Visa (POST)
+    // Add Visa (POST)
     app.post("/add-visa", async (req, res) => {
       const visa = req.body;
       try {
@@ -49,6 +54,20 @@ async function run() {
         res.status(200).send(visas);
       } catch (error) {
         res.status(500).send({ message: "Error fetching visas", error });
+      }
+    });
+
+    // Get Visa Details by ID (GET)
+    app.get("/visas/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const visa = await visasCollection.findOne({ _id: new ObjectId(id) });
+        if (!visa) {
+          return res.status(404).send({ message: "Visa not found" });
+        }
+        res.status(200).send(visa);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching visa details", error });
       }
     });
 
@@ -84,7 +103,6 @@ async function run() {
   }
 }
 
-// Run the MongoDB connection
 run();
 
 app.get("/", (req, res) => {
